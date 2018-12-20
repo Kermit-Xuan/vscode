@@ -45,6 +45,7 @@ export class ParameterHintsModel extends Disposable {
 
 	private throttledDelayer: Delayer<boolean>;
 	private provideSignatureHelpRequest?: CancelablePromise<modes.SignatureHelp | null | undefined>;
+	private activeSigHelpRequestId = 0;
 
 	constructor(
 		editor: ICodeEditor,
@@ -96,6 +97,7 @@ export class ParameterHintsModel extends Disposable {
 				triggerKind: context.triggerKind,
 				triggerCharacter: context.triggerCharacter,
 				isRetrigger: this.isTriggered,
+				activeSignatureHelp: this.state.state === 'active' ? this.state.hints : undefined
 			}), delay).then(undefined, onUnexpectedError);
 	}
 
@@ -160,7 +162,6 @@ export class ParameterHintsModel extends Disposable {
 		const position = this.editor.getPosition();
 
 		this.state = { state: 'pending' };
-
 		this.provideSignatureHelpRequest = createCancelablePromise(token =>
 			provideSignatureHelp(model, position, triggerContext, token));
 

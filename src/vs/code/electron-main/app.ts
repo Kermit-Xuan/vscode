@@ -63,7 +63,7 @@ import { MenubarChannel } from 'vs/platform/menubar/node/menubarIpc';
 import { hasArgs } from 'vs/platform/environment/node/argv';
 import { RunOnceScheduler } from 'vs/base/common/async';
 import { registerContextMenuListener } from 'vs/base/parts/contextmenu/electron-main/contextmenu';
-import { THEME_STORAGE_KEY, THEME_BG_STORAGE_KEY } from 'vs/code/electron-main/theme';
+import { storeBackgroundColor } from 'vs/code/electron-main/theme';
 import { nativeSep, join } from 'vs/base/common/paths';
 import { homedir } from 'os';
 import { localize } from 'vs/nls';
@@ -75,6 +75,11 @@ import { IStorageMainService, StorageMainService } from 'vs/platform/storage/nod
 import { GlobalStorageDatabaseChannel } from 'vs/platform/storage/node/storageIpc';
 import { generateUuid } from 'vs/base/common/uuid';
 import { startsWith } from 'vs/base/common/strings';
+import { BackupMainService } from 'vs/platform/backup/electron-main/backupMainService';
+import { IBackupMainService } from 'vs/platform/backup/common/backup';
+import { HistoryMainService } from 'vs/platform/history/electron-main/historyMainService';
+import { URLService } from 'vs/platform/url/common/urlService';
+import { WorkspacesMainService } from 'vs/platform/workspaces/electron-main/workspacesMainService';
 
 export class CodeApplication extends Disposable {
 
@@ -95,8 +100,7 @@ export class CodeApplication extends Disposable {
 		@IEnvironmentService private environmentService: IEnvironmentService,
 		@ILifecycleService private lifecycleService: ILifecycleService,
 		@IConfigurationService private configurationService: ConfigurationService,
-		@IStateService private stateService: IStateService,
-		@IHistoryMainService private historyMainService: IHistoryMainService,
+		@IStateService private stateService: IStateService
 	) {
 		super();
 
@@ -283,10 +287,7 @@ export class CodeApplication extends Disposable {
 
 		// Theme changes
 		if (event === 'vscode:changeColorTheme' && typeof payload === 'string') {
-			let data = JSON.parse(payload);
-
-			this.stateService.setItem(THEME_STORAGE_KEY, data.baseTheme);
-			this.stateService.setItem(THEME_BG_STORAGE_KEY, data.background);
+			storeBackgroundColor(this.stateService, JSON.parse(payload));
 		}
 	}
 
@@ -434,6 +435,10 @@ export class CodeApplication extends Disposable {
 		services.set(IIssueService, new SyncDescriptor(IssueService, [machineId, this.userEnv]));
 		services.set(IMenubarService, new SyncDescriptor(MenubarService));
 		services.set(IStorageMainService, new SyncDescriptor(StorageMainService));
+		services.set(IBackupMainService, new SyncDescriptor(BackupMainService));
+		services.set(IHistoryMainService, new SyncDescriptor(HistoryMainService));
+		services.set(IURLService, new SyncDescriptor(URLService));
+		services.set(IWorkspacesMainService, new SyncDescriptor(WorkspacesMainService));
 
 		// Telemetry
 		if (!this.environmentService.isExtensionDevelopment && !this.environmentService.args['disable-telemetry'] && !!product.enableTelemetry) {
@@ -595,6 +600,7 @@ export class CodeApplication extends Disposable {
 
 	private afterWindowOpen(accessor: ServicesAccessor): void {
 		const windowsMainService = accessor.get(IWindowsMainService);
+		const historyMainService = accessor.get(IHistoryMainService);
 
 		let windowsMutex: Mutex | null = null;
 		if (isWindows) {
@@ -642,8 +648,8 @@ export class CodeApplication extends Disposable {
 		});
 
 		// Jump List
-		this.historyMainService.updateWindowsJumpList();
-		this.historyMainService.onRecentlyOpenedChange(() => this.historyMainService.updateWindowsJumpList());
+		historyMainService.updateWindowsJumpList();
+		historyMainService.onRecentlyOpenedChange(() => historyMainService.updateWindowsJumpList());
 
 		// Start shared process after a while
 		const sharedProcessSpawn = this._register(new RunOnceScheduler(() => getShellEnvironment().then(userEnv => this.sharedProcess.spawn(userEnv)), 3000));

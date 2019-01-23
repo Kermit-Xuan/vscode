@@ -8,7 +8,7 @@ import { app, dialog } from 'electron';
 import { assign } from 'vs/base/common/objects';
 import * as platform from 'vs/base/common/platform';
 import product from 'vs/platform/node/product';
-import { parseMainProcessArgv } from 'vs/platform/environment/node/argv';
+import { parseMainProcessArgv } from 'vs/platform/environment/node/argvHelper';
 import { mkdirp } from 'vs/base/node/pfs';
 import { validatePaths } from 'vs/code/node/paths';
 import { LifecycleService, ILifecycleService } from 'vs/platform/lifecycle/electron-main/lifecycleMain';
@@ -36,8 +36,6 @@ import { IDiagnosticsService, DiagnosticsService } from 'vs/platform/diagnostics
 import { BufferLogService } from 'vs/platform/log/common/bufferLog';
 import { uploadLogs } from 'vs/code/electron-main/logUploader';
 import { setUnexpectedErrorHandler } from 'vs/base/common/errors';
-import { IDialogService } from 'vs/platform/dialogs/common/dialogs';
-import { CommandLineDialogService } from 'vs/platform/dialogs/node/dialogService';
 import { createWaitMarkerFile } from 'vs/code/node/wait';
 
 class ExpectedError extends Error {
@@ -310,7 +308,6 @@ function createServices(args: ParsedArgs, bufferLogService: BufferLogService): I
 	services.set(IStateService, new SyncDescriptor(StateService));
 	services.set(IConfigurationService, new SyncDescriptor(ConfigurationService));
 	services.set(IRequestService, new SyncDescriptor(RequestService));
-	services.set(IDialogService, new SyncDescriptor(CommandLineDialogService));
 	services.set(IDiagnosticsService, new SyncDescriptor(DiagnosticsService));
 
 	return new InstantiationService(services, true);
@@ -349,7 +346,7 @@ function main(): void {
 		console.error(err.message);
 		app.exit(1);
 
-		return void 0;
+		return undefined;
 	}
 
 	// If we are started with --wait create a random temporary file

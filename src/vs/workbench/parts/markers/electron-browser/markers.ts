@@ -24,6 +24,7 @@ import { Range } from 'vs/editor/common/core/range';
 import { getCodeActions } from 'vs/editor/contrib/codeAction/codeAction';
 import { CodeActionKind } from 'vs/editor/contrib/codeAction/codeActionTrigger';
 import { timeout } from 'vs/base/common/async';
+import { CancellationToken } from 'vs/base/common/cancellation';
 
 export const IMarkersWorkbenchService = createDecorator<IMarkersWorkbenchService>('markersWorkbenchService');
 
@@ -49,12 +50,12 @@ export class MarkersWorkbenchService extends Disposable implements IMarkersWorkb
 	private readonly codeActions: Map<string, Map<string, CodeAction[]>> = new Map<string, Map<string, CodeAction[]>>();
 
 	constructor(
-		@IMarkerService private markerService: IMarkerService,
+		@IMarkerService private readonly markerService: IMarkerService,
 		@IInstantiationService instantiationService: IInstantiationService,
-		@IBulkEditService private bulkEditService: IBulkEditService,
-		@ICommandService private commandService: ICommandService,
-		@IEditorService private editorService: IEditorService,
-		@IModelService private modelService: IModelService
+		@IBulkEditService private readonly bulkEditService: IBulkEditService,
+		@ICommandService private readonly commandService: ICommandService,
+		@IEditorService private readonly editorService: IEditorService,
+		@IModelService private readonly modelService: IModelService
 	) {
 		super();
 		this.markersModel = this._register(instantiationService.createInstance(MarkersModel, this.readMarkers()));
@@ -86,7 +87,7 @@ export class MarkersWorkbenchService extends Disposable implements IMarkersWorkb
 			codeActionsPerMarker = new Map<string, CodeAction[]>();
 			this.codeActions.set(marker.resource.toString(), codeActionsPerMarker);
 		}
-		let codeActions = codeActionsPerMarker.get(markerKey);
+		const codeActions = codeActionsPerMarker.get(markerKey);
 		if (codeActions) {
 			return Promise.resolve(this.toActions(codeActions, marker));
 		} else {
@@ -98,10 +99,10 @@ export class MarkersWorkbenchService extends Disposable implements IMarkersWorkb
 			if (!codeActionsPromisesPerMarker.has(markerKey)) {
 				const codeActionsPromise = this.getFixes(marker);
 				codeActionsPromisesPerMarker.set(markerKey, codeActionsPromise);
-				codeActionsPromise.then(codeActions => codeActionsPerMarker.set(markerKey, codeActions));
+				codeActionsPromise.then(codeActions => codeActionsPerMarker!.set(markerKey, codeActions));
 			}
 			// Wait for 100ms for code actions fetching.
-			return timeout(100).then(() => this.toActions(codeActionsPerMarker.get(markerKey) || [], marker));
+			return timeout(100).then(() => this.toActions(codeActionsPerMarker!.get(markerKey) || [], marker));
 		}
 	}
 
@@ -109,7 +110,7 @@ export class MarkersWorkbenchService extends Disposable implements IMarkersWorkb
 		return codeActions.map(codeAction => new Action(
 			codeAction.command ? codeAction.command.id : codeAction.title,
 			codeAction.title,
-			void 0,
+			undefined,
 			true,
 			() => {
 				return this.openFileAtMarker(marker)
@@ -149,7 +150,7 @@ export class MarkersWorkbenchService extends Disposable implements IMarkersWorkb
 				pinned: false,
 				revealIfVisible: true
 			},
-		}, ACTIVE_GROUP).then(() => void 0);
+		}, ACTIVE_GROUP).then(() => undefined);
 	}
 
 	private getFixes(marker: Marker): Promise<CodeAction[]> {
@@ -159,8 +160,7 @@ export class MarkersWorkbenchService extends Disposable implements IMarkersWorkb
 	private async _getFixes(uri: URI, range?: Range): Promise<CodeAction[]> {
 		const model = this.modelService.getModel(uri);
 		if (model) {
-			const codeActions = await getCodeActions(model, range ? range : model.getFullModelRange(), { type: 'manual', filter: { kind: CodeActionKind.QuickFix } });
-			return codeActions;
+			return getCodeActions(model, range ? range : model.getFullModelRange(), { type: 'manual', filter: { kind: CodeActionKind.QuickFix } }, CancellationToken.None /* TODO: use cancellation here */);
 		}
 		return [];
 	}
@@ -170,8 +170,8 @@ export class MarkersWorkbenchService extends Disposable implements IMarkersWorkb
 export class ActivityUpdater extends Disposable implements IWorkbenchContribution {
 
 	constructor(
-		@IActivityService private activityService: IActivityService,
-		@IMarkersWorkbenchService private markersWorkbenchService: IMarkersWorkbenchService
+		@IActivityService private readonly activityService: IActivityService,
+		@IMarkersWorkbenchService private readonly markersWorkbenchService: IMarkersWorkbenchService
 	) {
 		super();
 		this._register(this.markersWorkbenchService.markersModel.onDidChange(() => this.updateBadge()));

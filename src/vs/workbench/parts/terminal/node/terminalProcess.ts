@@ -19,7 +19,7 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 	private _currentTitle: string = '';
 	private _processStartupComplete: Promise<void>;
 	private _isDisposed: boolean = false;
-	private _titleInterval: number = -1;
+	private _titleInterval: NodeJS.Timer | null = null;
 
 	private readonly _onProcessData = new Emitter<string>();
 	public get onProcessData(): Event<string> { return this._onProcessData.event; }
@@ -47,13 +47,14 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 			shellName = 'xterm-256color';
 		}
 
+		const useConpty = windowsEnableConpty && process.platform === 'win32' && this._getWindowsBuildNumber() >= 18309;
 		const options: pty.IPtyForkOptions = {
 			name: shellName,
 			cwd,
 			env,
 			cols,
 			rows,
-			experimentalUseConpty: windowsEnableConpty
+			experimentalUseConpty: useConpty
 		};
 
 		try {
@@ -67,7 +68,7 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 			// The only time this is expected to happen is when the file specified to launch with does not exist.
 			this._exitCode = 2;
 			this._queueProcessExit();
-			this._processStartupComplete = Promise.resolve(void 0);
+			this._processStartupComplete = Promise.resolve(undefined);
 			return;
 		}
 		this._ptyProcess.on('data', (data) => {
@@ -91,12 +92,23 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 
 	public dispose(): void {
 		this._isDisposed = true;
-		window.clearInterval(this._titleInterval);
-		this._titleInterval = -1;
+		if (this._titleInterval) {
+			clearInterval(this._titleInterval);
+		}
+		this._titleInterval = null;
 		this._onProcessData.dispose();
 		this._onProcessExit.dispose();
 		this._onProcessIdReady.dispose();
 		this._onProcessTitleChanged.dispose();
+	}
+
+	private _getWindowsBuildNumber(): number {
+		const osVersion = (/(\d+)\.(\d+)\.(\d+)/g).exec(os.release());
+		let buildNumber: number = 0;
+		if (osVersion && osVersion.length === 4) {
+			buildNumber = parseInt(osVersion[3]);
+		}
+		return buildNumber;
 	}
 
 	private _setupTitlePolling() {
@@ -105,7 +117,7 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 			this._sendProcessTitle();
 		}, 0);
 		// Setup polling
-		this._titleInterval = window.setInterval(() => {
+		this._titleInterval = setInterval(() => {
 			if (this._currentTitle !== this._ptyProcess.process) {
 				this._sendProcessTitle();
 			}

@@ -25,6 +25,7 @@ import { generateUuid } from 'vs/base/common/uuid';
 import { ObjectTree } from 'vs/base/browser/ui/tree/objectTree';
 import { AsyncDataTree } from 'vs/base/browser/ui/tree/asyncDataTree';
 import { DataTree } from 'vs/base/browser/ui/tree/dataTree';
+import { ITreeNode } from 'vs/base/browser/ui/tree/tree';
 
 // --- List Commands
 
@@ -61,14 +62,14 @@ export function registerCommands(): void {
 
 		// ObjectTree
 		else if (focused instanceof ObjectTree || focused instanceof DataTree || focused instanceof AsyncDataTree) {
-			const list = focused;
+			const tree = focused;
 
 			const fakeKeyboardEvent = new KeyboardEvent('keydown');
-			list.focusNext(count, false, fakeKeyboardEvent);
+			tree.focusNext(count, true, fakeKeyboardEvent);
 
-			const listFocus = list.getFocus();
+			const listFocus = tree.getFocus();
 			if (listFocus.length) {
-				list.reveal(listFocus[0]);
+				tree.reveal(listFocus[0]);
 			}
 		}
 
@@ -99,7 +100,7 @@ export function registerCommands(): void {
 		if (focused instanceof List || focused instanceof PagedList) {
 			const list = focused;
 
-			const focus = list.getFocus() ? list.getFocus()[0] : void 0;
+			const focus = list.getFocus() ? list.getFocus()[0] : undefined;
 			const selection = list.getSelection();
 			if (selection && selection.indexOf(focus) >= 0) {
 				list.setSelection(selection.filter(s => s !== previousFocus));
@@ -112,9 +113,9 @@ export function registerCommands(): void {
 		else if (focused instanceof ObjectTree || focused instanceof DataTree || focused instanceof AsyncDataTree) {
 			const list = focused;
 
-			const focus = list.getFocus() ? list.getFocus()[0] : void 0;
+			const focus = list.getFocus() ? list.getFocus()[0] : undefined;
 			const selection = list.getSelection();
-			const fakeKeyboardEvent = new KeyboardEvent('keydown');
+			const fakeKeyboardEvent = new KeyboardEvent('keydown', { shiftKey: true });
 
 			if (selection && selection.indexOf(focus) >= 0) {
 				list.setSelection(selection.filter(s => s !== previousFocus), fakeKeyboardEvent);
@@ -150,7 +151,7 @@ export function registerCommands(): void {
 				const list = focused;
 
 				// Focus down first
-				const previousFocus = list.getFocus() ? list.getFocus()[0] : void 0;
+				const previousFocus = list.getFocus() ? list.getFocus()[0] : undefined;
 				focusDown(accessor, arg2);
 
 				// Then adjust selection
@@ -191,14 +192,14 @@ export function registerCommands(): void {
 
 		// ObjectTree
 		else if (focused instanceof ObjectTree || focused instanceof DataTree || focused instanceof AsyncDataTree) {
-			const list = focused;
+			const tree = focused;
 
 			const fakeKeyboardEvent = new KeyboardEvent('keydown');
-			list.focusPrevious(count, false, fakeKeyboardEvent);
+			tree.focusPrevious(count, true, fakeKeyboardEvent);
 
-			const listFocus = list.getFocus();
+			const listFocus = tree.getFocus();
 			if (listFocus.length) {
-				list.reveal(listFocus[0]);
+				tree.reveal(listFocus[0]);
 			}
 		}
 
@@ -236,7 +237,7 @@ export function registerCommands(): void {
 				const list = focused;
 
 				// Focus up first
-				const previousFocus = list.getFocus() ? list.getFocus()[0] : void 0;
+				const previousFocus = list.getFocus() ? list.getFocus()[0] : undefined;
 				focusUp(accessor, arg2);
 
 				// Then adjust selection
@@ -301,7 +302,7 @@ export function registerCommands(): void {
 							return tree.reveal(tree.getFocus());
 						}
 
-						return void 0;
+						return undefined;
 					});
 				}
 			}
@@ -348,7 +349,7 @@ export function registerCommands(): void {
 							return tree.reveal(tree.getFocus());
 						}
 
-						return void 0;
+						return undefined;
 					});
 				}
 			}
@@ -463,23 +464,22 @@ export function registerCommands(): void {
 
 		// ObjectTree
 		else if (focused instanceof ObjectTree || focused instanceof DataTree || focused instanceof AsyncDataTree) {
-			const list = focused;
-			const first = list.getFirstElementChild(null);
-
-			if (!first) {
-				return;
-			}
-
+			const tree = focused;
 			const fakeKeyboardEvent = new KeyboardEvent('keydown');
-			list.setFocus([first], fakeKeyboardEvent);
-			list.reveal(first);
+			tree.focusFirst(fakeKeyboardEvent);
+
+			const focus = tree.getFocus();
+
+			if (focus.length > 0) {
+				tree.reveal(focus[0]);
+			}
 		}
 
 		// Tree
 		else if (focused) {
 			const tree = focused;
 
-			tree.focusFirst({ origin: 'keyboard' }, options && options.fromFocused ? tree.getFocus() : void 0);
+			tree.focusFirst({ origin: 'keyboard' }, options && options.fromFocused ? tree.getFocus() : undefined);
 			tree.reveal(tree.getFocus());
 		}
 	}
@@ -516,23 +516,22 @@ export function registerCommands(): void {
 
 		// ObjectTree
 		else if (focused instanceof ObjectTree || focused instanceof DataTree || focused instanceof AsyncDataTree) {
-			const list = focused;
-			const last = list.getLastElementAncestor();
-
-			if (!last) {
-				return;
-			}
-
+			const tree = focused;
 			const fakeKeyboardEvent = new KeyboardEvent('keydown');
-			list.setFocus([last], fakeKeyboardEvent);
-			list.reveal(last);
+			tree.focusLast(fakeKeyboardEvent);
+
+			const focus = tree.getFocus();
+
+			if (focus.length > 0) {
+				tree.reveal(focus[0]);
+			}
 		}
 
 		// Tree
 		else if (focused) {
 			const tree = focused;
 
-			tree.focusLast({ origin: 'keyboard' }, options && options.fromFocused ? tree.getFocus() : void 0);
+			tree.focusLast({ origin: 'keyboard' }, options && options.fromFocused ? tree.getFocus() : undefined);
 			tree.reveal(tree.getFocus());
 		}
 	}
@@ -588,6 +587,65 @@ export function registerCommands(): void {
 			if (focused instanceof List || focused instanceof PagedList) {
 				const list = focused;
 				list.setSelection(range(list.length));
+			}
+
+			// Trees
+			else if (focused instanceof ObjectTree || focused instanceof DataTree || focused instanceof AsyncDataTree) {
+				const tree = focused;
+				const focus = tree.getFocus();
+				const selection = tree.getSelection();
+
+				// Which element should be considered to start selecting all?
+				let start: any | undefined = undefined;
+
+				if (focus.length > 0 && (selection.length === 0 || selection.indexOf(focus[0]) === -1)) {
+					start = focus[0];
+				}
+
+				if (!start && selection.length > 0) {
+					start = selection[0];
+				}
+
+				// What is the scope of select all?
+				let scope: any | undefined = undefined;
+
+				if (!start) {
+					scope = undefined;
+				} else {
+					const selectedNode = tree.getNode(start);
+					const parentNode = selectedNode.parent;
+
+					if (!parentNode.parent) { // root
+						scope = undefined;
+					} else {
+						scope = parentNode.element;
+					}
+				}
+
+				const newSelection: any[] = [];
+
+				// If the scope isn't the tree root, it should be part of the new selection
+				if (scope) {
+					newSelection.push(scope);
+				}
+
+				const visit = (node: ITreeNode<any, any>) => {
+					for (const child of node.children) {
+						if (child.visible) {
+							newSelection.push(child.element);
+
+							if (!child.collapsed) {
+								visit(child);
+							}
+						}
+					}
+				};
+
+				// Add the whole scope subtree to the new selection
+				visit(tree.getNode(scope));
+
+				const fakeKeyboardEvent = new KeyboardEvent('keydown');
+				tree.setSelection(newSelection, fakeKeyboardEvent);
 			}
 		}
 	});
@@ -698,15 +756,15 @@ export function registerCommands(): void {
 			const windowsService = accessor.get(IWindowsService);
 			windowsService.quit();
 		},
-		when: void 0,
+		when: undefined,
 		primary: KeyMod.CtrlCmd | KeyCode.KEY_Q,
-		win: { primary: void 0 }
+		win: { primary: undefined }
 	});
 
 	CommandsRegistry.registerCommand('_workbench.removeFromRecentlyOpened', function (accessor: ServicesAccessor, path: IWorkspaceIdentifier | ISingleFolderWorkspaceIdentifier | URI | string) {
 		const windowsService = accessor.get(IWindowsService);
 
-		return windowsService.removeFromRecentlyOpened([path]).then(() => void 0);
+		return windowsService.removeFromRecentlyOpened([path]).then(() => undefined);
 	});
 
 	CommandsRegistry.registerCommand('_workbench.downloadResource', function (accessor: ServicesAccessor, resource: URI) {

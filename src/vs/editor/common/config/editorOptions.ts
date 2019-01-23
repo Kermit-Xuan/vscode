@@ -1843,7 +1843,7 @@ export class EditorOptionsValidator {
 		};
 	}
 
-	private static _santizeFindOpts(opts: IEditorFindOptions | undefined, defaults: InternalEditorFindOptions): InternalEditorFindOptions {
+	private static _sanitizeFindOpts(opts: IEditorFindOptions | undefined, defaults: InternalEditorFindOptions): InternalEditorFindOptions {
 		if (typeof opts !== 'object') {
 			return defaults;
 		}
@@ -1866,7 +1866,7 @@ export class EditorOptionsValidator {
 		};
 	}
 
-	private static _santizeHoverOpts(_opts: boolean | IEditorHoverOptions | undefined, defaults: InternalEditorHoverOptions): InternalEditorHoverOptions {
+	private static _sanitizeHoverOpts(_opts: boolean | IEditorHoverOptions | undefined, defaults: InternalEditorHoverOptions): InternalEditorHoverOptions {
 		let opts: IEditorHoverOptions;
 		if (typeof _opts === 'boolean') {
 			opts = {
@@ -1954,7 +1954,7 @@ export class EditorOptionsValidator {
 			} else if (<any>renderWhitespace === false) {
 				renderWhitespace = 'none';
 			}
-			renderWhitespace = _stringSet<'none' | 'boundary' | 'all'>(opts.renderWhitespace, defaults.renderWhitespace, ['none', 'boundary', 'all']);
+			renderWhitespace = _stringSet<'none' | 'boundary' | 'all'>(renderWhitespace, defaults.renderWhitespace, ['none', 'boundary', 'all']);
 		}
 
 		let renderLineHighlight = opts.renderLineHighlight;
@@ -1965,7 +1965,7 @@ export class EditorOptionsValidator {
 			} else if (<any>renderLineHighlight === false) {
 				renderLineHighlight = 'none';
 			}
-			renderLineHighlight = _stringSet<'none' | 'gutter' | 'line' | 'all'>(opts.renderLineHighlight, defaults.renderLineHighlight, ['none', 'gutter', 'line', 'all']);
+			renderLineHighlight = _stringSet<'none' | 'gutter' | 'line' | 'all'>(renderLineHighlight, defaults.renderLineHighlight, ['none', 'gutter', 'line', 'all']);
 		}
 
 		let mouseWheelScrollSensitivity = _float(opts.mouseWheelScrollSensitivity, defaults.scrollbar.mouseWheelScrollSensitivity);
@@ -2027,10 +2027,10 @@ export class EditorOptionsValidator {
 		if (typeof opts.acceptSuggestionOnEnter === 'boolean') {
 			opts.acceptSuggestionOnEnter = opts.acceptSuggestionOnEnter ? 'on' : 'off';
 		}
-		const find = this._santizeFindOpts(opts.find, defaults.find);
+		const find = this._sanitizeFindOpts(opts.find, defaults.find);
 		return {
 			selectionClipboard: _boolean(opts.selectionClipboard, defaults.selectionClipboard),
-			hover: this._santizeHoverOpts(opts.hover, defaults.hover),
+			hover: this._sanitizeHoverOpts(opts.hover, defaults.hover),
 			links: _boolean(opts.links, defaults.links),
 			contextmenu: _boolean(opts.contextmenu, defaults.contextmenu),
 			quickSuggestions: quickSuggestions,
@@ -2548,7 +2548,7 @@ export const EDITOR_DEFAULTS: IValidatedEditorOptions = {
 	wordWrapMinified: true,
 	wrappingIndent: WrappingIndent.Same,
 	wordWrapBreakBeforeCharacters: '([{‘“〈《「『【〔（［｛｢£¥＄￡￥+＋',
-	wordWrapBreakAfterCharacters: ' \t})]?|&,;¢°′″‰℃、。｡､￠，．：；？！％・･ゝゞヽヾーァィゥェォッャュョヮヵヶぁぃぅぇぉっゃゅょゎゕゖㇰㇱㇲㇳㇴㇵㇶㇷㇸㇹㇺㇻㇼㇽㇾㇿ々〻ｧｨｩｪｫｬｭｮｯｰ”〉》」』】〕）］｝｣',
+	wordWrapBreakAfterCharacters: ' \t})]?|/&,;¢°′″‰℃、。｡､￠，．：；？！％・･ゝゞヽヾーァィゥェォッャュョヮヵヶぁぃぅぇぉっゃゅょゎゕゖㇰㇱㇲㇳㇴㇵㇶㇷㇸㇹㇺㇻㇼㇽㇾㇿ々〻ｧｨｩｪｫｬｭｮｯｰ”〉》」』】〕）］｝｣',
 	wordWrapBreakObtrusiveCharacters: '.',
 	autoClosingBrackets: 'languageDefined',
 	autoClosingQuotes: 'languageDefined',
